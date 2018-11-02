@@ -5,10 +5,10 @@ import sys
 arg_list = sys.argv
 if len(arg_list) != 4:
     print('Usage: python3 control-client.py <server-ip> <server-port> <receiver-port>')
-
+    sys.exit(0)
 server_ip = arg_list[1]
 server_port = int(arg_list[2])
-receiver_port = int(arg_list[3])
+receiver_port = arg_list[3]
 
 print('Type SETUP to initiate a TCP connection with server.')
 print('After SETUP type PLAY or PAUSE at anytime.')
@@ -39,16 +39,31 @@ if user_cmd == 'SETUP':
     while sensor_msg == '':
         sensor_msg = get_sensor_data()
 
-    setup_msg = 'SETUP rtsp://'+server_ip+'/RTSP/2.0 \nCSeq: 302 \nTransport: UDP;unicast;dest_addr":4588" \nSensor: '+sensor_msg
+    setup_msg = ('SETUP rtsp://'+server_ip+'/RTSP/2.0 \n' +
+    'CSeq: 302 \nTransport: UDP;unicast;dest_addr:'+receiver_port+' \n' +
+    'Sensor: ' + sensor_msg)
     client_socket.send(setup_msg.encode())
-
+state = ''
 while True:
     user_cmd = input()
     user_cmd = user_cmd.upper()
-
-if user_cmd == 'PLAY':
-    print('play')
-elif user_cmd == 'PAUSE':
-    print('pause')
-else:
-    print('Unknow command')
+    if user_cmd == 'PLAY':
+        state = 'play'
+        print('play')
+        sensor_msg = get_sensor_data()
+        while sensor_msg == '':
+            sensor_msg = get_sensor_data()
+        play_msg = ('PLAY rtsp://' + server_ip +'/RTSP/2.0 \n' +
+        'CSeq: 836 \n' +
+        'Sensor: ' + sensor_msg)
+        client_socket.send(play_msg.encode())
+    elif user_cmd == 'PAUSE':
+        state = 'pause'
+        print('pause')
+        pause_msg = ('PAUSE rtsp://' + server_ip +'/RTSP/2.0 \n' +
+        'CSeq: 834')
+        client_socket.send(pause_msg.encode())
+    elif user_cmd == 'SETUP':
+        print('TCP connection has already been established.')
+    else:
+        print('No dice, unknown command.')

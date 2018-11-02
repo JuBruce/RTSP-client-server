@@ -6,11 +6,16 @@ import os
 import _thread
 from random import randint
 from select import select
+from time import sleep
+
+
+
 
 arg_list = sys.argv
 if len(arg_list) != 5:
     print('Usage: python3 server.py <server port> <oxygen_file.bin> <tempeture_file.bin> <pressure_file.bin>')
     sys.exit(0)
+
 server_port = int(arg_list[1])
 oxygen_file = arg_list[2]
 tempeture_file = arg_list[3]
@@ -26,138 +31,97 @@ if o_check[1] != 'bin' and t_check[1] != 'bin' and p_check[1] != 'bin':
     print('All files must be bin files')
     sys.exit(0)
 
-########
-#  Used for creation of random bin file
-# directory = os.getcwd()
-# ox_directory = os.path.join(directory+'oxygen.bin')
-# temp_directory = os.path.join(directory+'temp.bin')
-# pres_directory = os.path.join(directory+'pressure.bin')
-# with open('pres_directoy', 'wb') as fout:
-#     fout.write(os.urandom(2048)) 
-########
-
-#reads data from all .bin file and converts them to integers
+f_oxyegen = open(oxygen_file, 'rb')
+f_pressure = open(pressure_file,'rb')
+f_temp = open(tempeture_file, 'rb')
+# get_data reads in from each .bin file
+oxygen_level = ''
+temp_level = ''
+pressure_level = ''
 def get_data():
-    ######## why use 5 bits?
-    #Oxygen bit collection
-    ########
-    f = open(oxygen_file, 'rb')
-    # read one byte
-    byte = f.read(1)
-    # convert the byte to an integer representation
-    byte = ord(byte)
-    # now convert to string of 1s and 0s
-    byte = bin(byte)[2:].rjust(8, '0')
-    # now byte contains a string with 0s and 1s
-    l = list(byte)
-    level = ''.join(l[0:5])
-    l = l[5:]
-    oxygen_level = int(level,2)
-    while byte:
-        if len(l) > 5:
-            level = ''.join(l[0:5])
-            l = l[5:]
-            oxygen_level = int(level,2)
-            pass
-        byte = f.read(1)
-        if len(byte) < 1:
-            break
-        else:
-            byte = ord(byte)
-            byte = bin(byte)[2:].rjust(8,'0')
-            l += list(byte)
-            level = ''.join(l[0:5])
-            l = l[5:]
-            oxygen_level = int(level,2)
+    global oxygen_level
+    global temp_level
+    global pressure_level
+    while True:
+        sleep(3)
+        ######## 
+        #Oxygen bit collection
+        ########
+        # read one byte
+        byte = f_oxyegen.read(1)
+        # convert the byte to an integer representation
+        byte = ord(byte)
+        # now convert to string of 1s and 0s
+        oxygen_level = '79:' + bin(byte)[5:].rjust(5, '0')
+        
+        
+
+        ##########
+        #pressure bit collection
+        ##########
+        byte = f_pressure.read(1)
+        byte = ord(byte)
+        byte = bin(byte)[2:].rjust(8, '0')
+        l = list(byte)
+        byte = f_pressure.read(1)
+        byte = ord(byte)
+        byte = bin(byte)[2:].rjust(8,'0')
+        l = l+list(byte)
+        l = ''.join(l[5:])
+        pressure_level = '80:'+l
+
+        
+
+        #########
+        #temp bit collection
+        #########
+        byte = f_temp.read(1)
+        byte = ord(byte)
+        byte = bin(byte)[2:].rjust(8,'0')
+        temp_level = '84:' + byte
 
 
-    ########## does trivia matter?
-    #pressure bit collection
-    ##########
-    f = open(pressure_file,'rb')
-    byte = f.read(1)
-    byte = ord(byte)
-    byte = bin(byte)[2:].rjust(8, '0')
-    l = list(byte)
-    byte = f.read(1)
-    byte = ord(byte)
-    byte = bin(byte)[2:].rjust(8,'0')
-    l = l+list(byte)
-    level = ''.join(l[0:11])
-    l = l[11:]
-    pressure_level = int(level,2)
-    while byte:
-        if len(l) > 11:
-            level = ''.join(l[0:11])
-            l = l[11:]
-            pressure_level = int(level,2)
-            pass
-        byte = f.read(1)
-        if len(byte) < 1:
-            break
-        else:
-            byte = f.read(1)
-            byte = ord(byte)
-            byte = bin(byte)[2:].rjust(8, '0')
-            l = l + list(byte)
-            byte = f.read(1)
-            if len(byte) < 1:
-                break 
-            else:
-                byte = ord(byte)
-                byte = bin(byte)[2:].rjust(8,'0')
-                l = l+list(byte)
-                level = ''.join(l[0:11])
-                l = l[11:]
-                pressure_level = int(level,2)
 
-
-    #########
-    #temp bit collection
-    #########
-    f = open(tempeture_file, 'rb')
-    byte = f.read(1)
-    byte = int.from_bytes(byte,byteorder='big',signed=True)
-    temp_level = byte
-    while byte:
-        byte = f.read(1)
-        if len(byte) < 1:
-            break
-        else:
-            byte = int.from_bytes(byte,byteorder='big',signed=True)
-            temp_level = byte
-
-    return oxygen_level, temp_level, pressure_level  
 
 #reads in data from control client
 def clientthread(conn,port):
+    receiver_port = ''
+    sentence = conn.recv(1024).decode()
+    cmd = sentence.split('\n')
+    cmd = cmd[0]
+    cmd = cmd.split(' ')
+    print(cmd[0])
+    conn.setblocking(0)
     while True:
-        sentence = conn.recv(1024).decode()
+        try:
+            data = conn.recv(1024)
+            print(data)
+            sentence = data.decode()
+        except BlockingIOError:
+            pass
         if sentence.startswith('SETUP'):
-            sentence = sentence.split('\n')
-            setup_line = sentence[0]
-            seq_line = sentence[1]
-            transport_line = sentence[2]
-            sensor_line = sentence[3]
-            print(setup_line)
-            print('xxxx')
-            print(seq_line)
-            print('xxxx')
-            print(transport_line)
-            print('xxxx')
-            print(sensor_line)
-        if sentence.startswith('PLAY'):
-            print("play")
-        if sentence.startswith('PAUSE'):
-            print('pause')
+            user_input = sentence.split('\n')
+            setup_line = user_input[0]
+            seq_line = user_input[1]
+            transport_line = user_input[2]
+            sensor_line = user_input[3]
+            rcv = transport_line.split(":")
+            sleep(3)
+            print(oxygen_level + ';' + temp_level + ';' + pressure_level)
 
+        elif sentence.startswith('PLAY'):
+            print("play")
+            sleep(3)
+            print(oxygen_level + ';' + temp_level + ';' +pressure_level)
+        elif sentence.startswith('PAUSE'):
+            print('pause')
         # while play == True:
         #     levels = get_data()
         #     #send over udp
         #     while pause == True:
         #         pass
 
-
+_thread.start_new_thread(get_data,())
 #setup for TCP connection
 tcp = socket(AF_INET, SOCK_STREAM)
 tcp.bind(('',server_port))
@@ -170,8 +134,7 @@ while True:
     for s in inputready:
         if s == tcp:
             conn, addr = tcp.accept()
-            _thread.start_new_thread(clientthread ,(conn,server_port))
-
+            _thread.start_new_thread(clientthread,(conn,server_port))
 
         else:
             print ("unknown socket:", s)
