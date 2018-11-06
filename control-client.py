@@ -39,11 +39,11 @@ if user_cmd == 'SETUP':
     while sensor_msg == '':
         sensor_msg = get_sensor_data()
 
-    setup_msg = ('SETUP rtsp://'+server_ip+'/RTSP/2.0 \n' +
-    'CSeq: 302 \nTransport: UDP;unicast;dest_addr:'+receiver_port+' \n' +
-    'Sensor: ' + sensor_msg)
+    setup_msg = ('SETUP rtsp://'+server_ip+'/RTSP/2.0\n' +
+    'CSeq: 302\nTransport: UDP;unicast;dest_addr:'+receiver_port+'\n' +
+    'Sensor:' + sensor_msg)
     client_socket.send(setup_msg.encode())
-state = ''
+state =''
 while True:
     user_cmd = input()
     user_cmd = user_cmd.upper()
@@ -53,17 +53,23 @@ while True:
         sensor_msg = get_sensor_data()
         while sensor_msg == '':
             sensor_msg = get_sensor_data()
-        play_msg = ('PLAY rtsp://' + server_ip +'/RTSP/2.0 \n' +
-        'CSeq: 836 \n' +
-        'Sensor: ' + sensor_msg)
+        play_msg = ('PLAY rtsp://' + server_ip + '/RTSP/2.0\n' +
+        'CSeq: 836\n' +
+        'Sensor:' + sensor_msg)
         client_socket.send(play_msg.encode())
     elif user_cmd == 'PAUSE':
         state = 'pause'
         print('pause')
-        pause_msg = ('PAUSE rtsp://' + server_ip +'/RTSP/2.0 \n' +
+        pause_msg = ('PAUSE rtsp://' + server_ip + '/RTSP/2.0\n' +
         'CSeq: 834')
         client_socket.send(pause_msg.encode())
     elif user_cmd == 'SETUP':
         print('TCP connection has already been established.')
+    elif user_cmd == 'TEARDOWN':
+        print('Ending session')
+        teardown_msg = ('TEARDOWN rtsp://' + server_ip + '/RTSP/2.0\n' +
+        'CSeq: 892')
+        client_socket.send(teardown_msg.encode())
+        sys.exit()
     else:
         print('No dice, unknown command.')
